@@ -1,65 +1,60 @@
-beaker browser
+SAFEr Browser
 ======
 
-Beaker is a browser for IPFS and Dat.
-It's licensed MIT, and supports plugins for adding new protocols and Web APIs.
-[Read the introduction](http://pfrazee.github.io/2016/08/10/beaker-browser-0.1.html).
+SAFEr is a browser designed to open safe:// websites on The SAFE Network.
 
-Please feel free to open usability issues. Join us at #beakerbrowser on Freenode.
+For more information about The SAFE Network please vist the following links.
 
-### [Demo video](https://www.youtube.com/watch?v=nKHJ4rLN9mo)
+* https://safenetwork.org/
+* https://safenetforum.org/
+* https://safenetforum.org/t/safer-browser-s-proposal-donation-address-in-op/10336/247
+* http://maidsafe.net/
 
-[![screenshot.png](doc/ipfs-browser.gif)](https://www.youtube.com/watch?v=nKHJ4rLN9mo)
 
-## Binaries
+# Linux/Ubuntu Install Instructions:
 
-### [OSX 64-bit](https://github.com/pfrazee/beaker/releases/download/0.1.0/beaker-browser-v0.1.0-darwin-x64.dmg)
+Step 01: Install Git https://help.ubuntu.com/lts/serverguide/git.html
 
-## Building from source
+Step 02: Sign up for https://github.com/
 
-Requires node 6.2.1.
+Step 03: https://help.github.com/articles/set-up-git/#platform-linux
 
-```
-git clone https://github.com/pfrazee/beaker.git
-cd beaker
-npm install
-npm run rebuild #see https://github.com/electron/electron/issues/5851
-npm start
-```
+Step 04: https://help.github.com/articles/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent/#platform-linux
 
-If you pull latest from the repo and get weird module errors, do:
+Step 05: https://help.github.com/articles/adding-a-new-ssh-key-to-your-github-account/#platform-linux
 
-```
-npm run burnthemall
-```
 
-This invokes [the mad king](http://nerdist.com/wp-content/uploads/2016/05/the-mad-king-game-of-thrones.jpg), who will torch your npm_modules, and do the full install/rebuild process for you.
-`npm start` should work afterwards.
 
-## Plugins
+Step 06: Install node js requires the latest version of node js
+Check to see what the latest version is here https://nodejs.org/en/download/
 
-To install a new plugin, install it globally using npm.
-For example, to install the example plugin:
+Use option one make sure to install the latest version
+http://www.hostingadvice.com/how-to/install-nodejs-ubuntu-14-04/#node-version-manager
 
-```bash
-npm install -g beaker-plugin-example
-```
 
-Available plugins:
 
- - **[beaker-plugin-dat](https://github.com/pfrazee/beaker-plugin-dat).** Adds support for browsing the [Dat Network](http://dat-data.com/). **Installed by default.**
- - **[beaker-plugin-ipfs](https://github.com/pfrazee/beaker-plugin-ipfs).** Adds support for browsing the [IPFS Network](https://ipfs.io/). **Installed by default.**
- - **[beaker-plugin-example](https://github.com/pfrazee/beaker-plugin-example).** A simple example-plugin, to use as a reference. Adds the 'beaker-example' protocol.
+Step 07: Open Terminal
 
-Submit a PR to have your plugin added to this list.
+* $ git clone https://github.com/joshuef/beaker.git
+* $ cd beaker
+* $ git checkout SafePOC
+* $ npm install
+* $ npm run rebuild
+* $ npm start
 
-## Documentation
 
- - [Using IPFS](./doc/using-ipfs.md)
- - [Using Dat](./doc/using-dat.md)
- - [Dat vs. IPFS: What's the difference?](./doc/dat-vs-ipfs-comparison.md)
- - Howto: [Authoring Plugins](./doc/authoring-plugins.md)
- - [Codebase & build notes](./build-notes.md)
+Step 08: Any time you want to run the browser again all you have to do is open terminal
+
+
+* $ cd beaker
+* $ npm start
+
+
+Note 01: If you want to do a fresh install. Delete the beaker folder and start at Step 07:
+
+Note 02: Do not worry about any errors that appear.
+
+
 
 ## License
 
