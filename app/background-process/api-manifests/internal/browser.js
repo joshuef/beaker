@@ -19,5 +19,7 @@ export default {
 
   getDefaultProtocolSettings: 'promise',
   setAsDefaultProtocolClient: 'promise',
-  removeAsDefaultProtocolClient: 'promise'
+  removeAsDefaultProtocolClient: 'promise',
+
+  showOpenDialog: 'promise'
 }

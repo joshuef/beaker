@@ -19,13 +19,11 @@ export function setup () {
 }
 
 export function show () {
-    
-  document.title = 'Favorites'
+  document.title = 'New tab'
   co(function*() {
     // get the bookmarks, ordered by # of views
     bookmarks = yield beakerBookmarks.list()
     bookmarks = bookmarks || []
-    
     render()
   })
 }
@@ -146,7 +144,7 @@ function onClickDelete (i) {
   return e => {
     e.preventDefault()
     e.stopPropagation()
-    
+
     // delete bookmark
     var b = bookmarks[i]
     bookmarks.splice(i, 1)

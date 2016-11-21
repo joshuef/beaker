@@ -4,11 +4,11 @@
   cursor: pointer;
   border: 0;
   border-radius: 2px;
-  color: #777;
+  color: #555;
   background: #f0f0f0;
   padding: 4px 10px;
   border: 1px solid #ccc;
-  
+
   &.pressed,
   &:hover {
     text-decoration: none;
@@ -17,10 +17,22 @@
     box-shadow: inset 0px 1px 0px rgba(0, 0, 0, 0.07);
   }
 
+  &.disabled,
   &:disabled {
-    color: gray;
+    cursor: default;
+    color: #aaa;
     background: #fafafa;
     border: 1px solid #ddd;
+    box-shadow: none;
+    .spinner {
+      color: #aaa;
+    }
+  }
+
+  .spinner {
+    display: inline-block;
+    position: relative;
+    top: 1px;
   }
 }
 
@@ -39,6 +51,18 @@
     animation-name: primaryBtnGlow;
     animation-duration: 2s;
     animation-iteration-count: infinite;
+  }
+}
+
+&.btn-green {
+  background: #15ab02;
+  color: #fff;
+  border-color: #03650a;
+
+  &.pressed,
+  &:hover {
+    background: #138e03;
+    color: #fff;
   }
 }
 
@@ -78,8 +102,8 @@
 
   position: absolute;
   z-index: 1;
-  top: 25px;
-  right: 2px;
+  top: 24px;
+  right: 0px;
   background: #fff;
   border: 1px solid #ccc;
   width: 149px;
@@ -87,25 +111,31 @@
   border-radius: 2px;
   color: #555;
   font-size: 14px;
+  padding: 2px 0;
 
   * {
     cursor: pointer;
   }
   hr {
-    margin: 0;
+    margin: 2px 0;
   }
   & > div, & > a {
     display: block;
-    padding: 4px 7px;
+    padding: 7px 7px;
     color: #555;
     .icon {
       width: 15px;
       display: inline-block;
       text-align: center;
     }
+    &.disabled {
+      color: #999;
+    }
     &:hover {
-      background: #fafafa;
       text-decoration: none;
+    }
+    &:hover:not(.disabled) {
+      background: #fafafa;
       color: #0091ff;
     }
   }

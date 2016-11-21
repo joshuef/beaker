@@ -8,7 +8,6 @@ import * as statusBar from './ui/statusbar'
 import { urlToData } from '../lib/fg/img'
 import errorPage from '../lib/error-page'
 import _ from 'lodash';
-// import store from '../background-process/safe-storage/store/safe-store';
 
 // constants
 // =
@@ -72,12 +71,23 @@ export function create (opts) {
     isReceivingAssets: false, // has the webview started receiving assets, in the current load-cycle?
     isActive: false, // is the active page?
     isInpageFinding: false, // showing the inpage find ctrl?
+    isLiveReloading: false, // live-reload enabled?
     zoom: 0, // what's the current zoom level?
     favicons: null, // what are the favicons of the page?
-    archiveInfo: null, // if a dat archive, includes the metadata
+    faviconDominantColor: null, // what's the computed dominant color of favicon?
+
+    // current site's info
+    protocolInfo: null, // info about the current page's delivery protocol
+    siteInfo: null, // metadata about the current page, derived from protocol knowledge
+    sitePerms: null, // saved permissions for the current page
+    siteInfoOverride: null, // explicit overrides on the siteinfo, used by beaker: pages
+
+    // history
+    lastVisitedAt: 0, // when is last time url updated?
+    lastVisitedURL: null, // last URL added into history
 
     // prompts
-    prompts: [], // list of active prompts
+    prompts: [], // list of active prompts (perms)
 
     // tab state
     isPinned: opts.isPinned, // is this page pinned?
@@ -86,7 +96,12 @@ export function create (opts) {
 
     // get the URL of the page we want to load (vs which is currently loaded)
     getIntendedURL: function () {
-      return page.loadingURL || page.getURL()
+      var url = page.loadingURL || page.getURL()
+      if (url.startsWith('beaker:') && page.siteInfoOverride && page.siteInfoOverride.url) {
+        // override, only if on a builtin beaker site
+        url = page.siteInfoOverride.url
+      }
+      return url
     },
 
     // custom isLoading
@@ -98,6 +113,7 @@ export function create (opts) {
     loadURL: function (url, opts) {
       // reset some state
       page.isReceivingAssets = false
+      page.siteInfoOverride = null
 
       // set and go
       page.loadingURL = url
@@ -121,6 +137,14 @@ export function create (opts) {
 
     getURLOrigin: function () {
       return parseURL(this.getURL()).origin
+    },
+
+    // helper to load the perms
+    fetchSitePerms () {
+      beakerSitedata.getPermissions(this.getURL()).then(perms => {
+        page.sitePerms = perms
+        navbar.update(page)
+      })
     }
   }
 
@@ -135,7 +159,7 @@ export function create (opts) {
   ;([
     ['getURL', ''],
     ['getTitle', ''],
-    
+
     ['goBack'],
     ['canGoBack'],
     ['goForward'],
@@ -185,6 +209,8 @@ export function create (opts) {
   page.webviewEl.addEventListener('crashed', onCrashed)
   page.webviewEl.addEventListener('gpu-crashed', onCrashed)
   page.webviewEl.addEventListener('plugin-crashed', onCrashed)
+  page.webviewEl.addEventListener('ipc-message', onIPCMessage)
+  page.webviewEl.addEventListener('page-title-updated', onPageTitleUpdated)
 
   // rebroadcasts
   page.webviewEl.addEventListener('load-commit', rebroadcastEvent)
@@ -209,7 +235,6 @@ export function create (opts) {
   return page
 }
 
-
 function handleStoreChange() {
     var page = getAll();
 
@@ -222,10 +247,7 @@ function handleStoreChange() {
     })
 }
 
-
 export const handleSafeStoreChange = _.debounce( handleStoreChange, 200 );
-
-
 
 export function remove (page) {
   // find
@@ -349,29 +371,24 @@ export function changeActiveTo (index) {
     setActive(pages[index])
 }
 
-// export function getActive () {
-//   return activePage
-// }
-
-
 export function toggleSafe ( )
 {
     var webContents = remote.getCurrentWindow().webContents;
-        
+
     if( typeof(webContents.isSafe) === 'undefined' )
     {
         webContents.isSafe = true;
     }
-    
+
     webContents.isSafe = ! webContents.isSafe;
 
     let pages = getAll();
-    
-    pages.forEach( page => 
+
+    pages.forEach( page =>
     {
         // if (page)
-        page.reload()    
-        
+        page.reload()
+
     })
 
 }
@@ -455,6 +472,7 @@ function onWillNavigate (e) {
     page.isReceivingAssets = false
     // update target url
     page.loadingURL = e.url
+    page.siteInfoOverride = null
     navbar.updateLocation(page)
   }
 }
@@ -468,14 +486,7 @@ function onDidNavigateInPage (e) {
     navbar.updateLocation(page)
 
     // update history
-    var url = page.getURL()
-    if (!url.startsWith('beaker:')) {
-      beakerHistory.addVisit({ url: page.getURL(), title: page.getTitle() || page.getURL() })
-      beakerBookmarks.addVisit(page.getURL())
-      if (page.isPinned) {
-        savePinnedToDB()
-      }
-    }
+    updateHistory(page)
   }
 }
 
@@ -483,7 +494,7 @@ function onLoadCommit (e) {
   // ignore if this is a subresource
   if (!e.isMainFrame)
     return
-  
+
   var page = getByWebview(e.target)
   if (page) {
     // check if this page bookmarked
@@ -511,24 +522,25 @@ function onDidStartLoading (e) {
 
 function onDidStopLoading (e) {
   var page = getByWebview(e.target)
-  if (page) {    
-    // update history
+  if (page) {
     var url = page.getURL()
-    if (!url.startsWith('beaker:')) {
-      beakerHistory.addVisit({ url: page.getURL(), title: page.getTitle() || page.getURL() })
-      beakerBookmarks.addVisit(page.getURL())
-      if (page.isPinned) {
-        savePinnedToDB()
-      }
-    }
+    // update history
+    updateHistory(page)
 
-    // fetch protocol info
-    var scheme = parseURL(url).protocol
-    if (scheme == 'http:' || scheme == 'https:')
-      page.protocolDescription = { label: scheme.slice(0,-1).toUpperCase() }
-    else
-      page.protocolDescription = beakerBrowser.getProtocolDescription(scheme)
-    console.log('Protocol description', page.protocolDescription)
+    // fetch protocol and page info
+    var { protocol, hostname } = parseURL(url)
+    page.siteInfo = null
+    page.sitePerms = null
+    page.protocolInfo = { url, hostname, scheme: protocol, label: protocol.slice(0, -1).toUpperCase() }
+    if (protocol === 'dat:') {
+      datInternalAPI.getArchiveDetails(hostname).then(info => {
+        page.siteInfo = info
+        navbar.update(page)
+      })
+    }
+    if (protocol !== 'beaker:') {
+      page.fetchSitePerms()
+    }
 
     // update page
     page.loadingURL = false
@@ -543,8 +555,15 @@ function onDidStopLoading (e) {
     // inject some corrections to the user-agent styles
     // real solution is to update electron so we can change the user-agent styles
     // -prf
-    page.webviewEl.insertCSS(`
-      body:-webkit-full-page-media {
+    page.webviewEl.insertCSS(
+      // set the default background to white.
+      // on some devices, if no bg is set, the buffer doesnt get cleared
+      `body {
+        background: #fff;
+      }` +
+
+      // adjust the positioning of fullpage media players
+      `body:-webkit-full-page-media {
         background: #ddd;
       }
       audio:-webkit-full-page-media, video:-webkit-full-page-media {
@@ -552,8 +571,8 @@ function onDidStopLoading (e) {
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-      }
-    `)
+      }`
+    )
   }
 }
 
@@ -582,6 +601,7 @@ function onDidGetResponseDetails (e) {
     page.isReceivingAssets = true
     // set URL in navbar
     page.loadingURL = e.newURL
+    page.siteInfoOverride = null
     navbar.updateLocation(page)
   }
 }
@@ -638,9 +658,13 @@ function onPageFaviconUpdated (e) {
   if (e.favicons && e.favicons[0]) {
     var page = getByWebview(e.target)
     page.favicons = e.favicons
-    urlToData(e.favicons[0], 16, 16, (err, dataUrl) => {
-      if (dataUrl)
-        beakerSitedata.set(page.getURL(), 'favicon', dataUrl)
+    page.faviconDominantColor = null
+    urlToData(e.favicons[0], 16, 16, (err, res) => {
+      if (res) {
+        beakerSitedata.set(page.getURL(), 'favicon', res.url)
+        page.faviconDominantColor = res.dominantColor
+        events.emit('page-favicon-updated', getByWebview(e.target))
+      }
     })
   }
 }
@@ -649,8 +673,30 @@ function onUpdateTargetUrl ({ url }) {
   statusBar.set(url)
 }
 
+function onPageTitleUpdated (e) {
+  var page = getByWebview(e.target)
+
+  // if page title changed within 15 seconds, update it again
+  if (page.getURL() === page.lastVisitedURL && Date.now() - page.lastVisitedAt < 15 * 1000) {
+    updateHistory(page)
+  }
+}
+
 function onCrashed (e) {
   console.error('Webview crash', e)
+}
+
+function onIPCMessage (e) {
+  var page = getByWebview(e.target)
+  if (!page) return
+  if (e.channel.startsWith('dat:')) {
+    datIPCHandler(page, e.channel.slice(4), e.args)
+  } else {
+    switch (e.channel) {
+      case 'site-info-override:set': page.siteInfoOverride = e.args[0]; navbar.updateLocation(page); navbar.update(page); break
+      case 'site-info-override:clear': page.siteInfoOverride = null; navbar.updateLocation(page); navbar.update(page); break
+    }
+  }
 }
 
 // internal helper functions
@@ -674,8 +720,9 @@ function createWebviewEl (id, url) {
   var el = document.createElement('webview')
   el.dataset.id = id
   el.setAttribute('preload', 'file://'+path.join(remote.app.getAppPath(), 'webview-preload.build.js'))
+  el.setAttribute('webpreferences', 'allowDisplayingInsecureContent')
   el.setAttribute('src', url || DEFAULT_URL)
-  
+
   if( webSecurityDisabled )
   {
       el.setAttribute('disablewebsecurity', true)
@@ -698,4 +745,17 @@ function warnIfError (label) {
 function parseURL (str) {
   try { return new URL(str) }
   catch (e) { return {} }
+}
+
+function updateHistory (page) {
+  var url = page.getURL()
+  if (!url.startsWith('beaker:')) {
+    beakerHistory.addVisit({ url: page.getURL(), title: page.getTitle() || page.getURL() })
+    beakerBookmarks.addVisit(page.getURL())
+    if (page.isPinned) {
+      savePinnedToDB()
+    }
+  }
+  page.lastVisitedAt = Date.now()
+  page.lastVisitedURL = url
 }

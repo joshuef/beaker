@@ -1,9 +1,9 @@
 import { ipcMain } from 'electron'
-import beakerBrowser from './api-manifests/browser'
-import beakerBookmarks from './api-manifests/bookmarks'
-import beakerDownloads from './api-manifests/downloads'
-import beakerHistory from './api-manifests/history'
-import beakerSitedata from './api-manifests/sitedata'
+import beakerBrowser from './api-manifests/internal/browser'
+import beakerBookmarks from './api-manifests/internal/bookmarks'
+import beakerDownloads from './api-manifests/internal/downloads'
+import beakerHistory from './api-manifests/internal/history'
+import beakerSitedata from './api-manifests/internal/sitedata'
 import * as plugins from './plugins'
 
 // dat-plugin is an optional internal dependency
@@ -21,7 +21,7 @@ export function setup () {
   ipcMain.on('get-web-api-manifests', (event, scheme) => {
     // hardcode the beaker: scheme, since that's purely for internal use
     if (scheme == 'beaker:') {
-      var protos = { 
+      var protos = {
         beakerBrowser,
         beakerBookmarks,
         beakerDownloads,

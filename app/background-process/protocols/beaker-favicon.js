@@ -7,23 +7,24 @@
 import { protocol } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import log from 'loglevel'
 import * as sitedata from '../safe-storage/sitedata'
 
 export function setup () {
   // load default favicon
   var defaultFaviconBuffer = -6 // not found, till we load it
-  fs.readFile(path.join(__dirname, './img/default-favicon.ico'), (err, buf) => {
+  fs.readFile(path.join(__dirname, './assets/img/default-favicon.ico'), (err, buf) => {
     if (err)
-      console.log('Failed to load default favicon', path.join(__dirname, '../../img/default-favicon.ico'), err)
+      log.warn('Failed to load default favicon', path.join(__dirname, './assets/img/default-favicon.ico'), err)
     if (buf)
       defaultFaviconBuffer = buf
   })
 
   // load logo favicon
   var logoBuffer = -6 // not found, till we load it
-  fs.readFile(path.join(__dirname, './img/logo-favicon.png'), (err, buf) => {
+  fs.readFile(path.join(__dirname, './assets/img/logo-favicon.png'), (err, buf) => {
     if (err)
-      console.log('Failed to load logo favicon', path.join(__dirname, '../../img/logo.png'), err)
+      log.warn('Failed to load logo favicon', path.join(__dirname, './assets/img/logo.png'), err)
     if (buf)
       logoBuffer = buf
   })
@@ -33,8 +34,8 @@ export function setup () {
     var url = request.url.slice('beaker-favicon:'.length)
 
     // special case
-    if (url == 'beaker')
-      return cb(logoBuffer)
+    if (url === 'beaker' || url.startsWith('beaker:'))
+      return cb({ mimeType: 'image/png', data: logoBuffer })
 
     // look up in db
     sitedata.get(url, 'favicon').then(data => {
@@ -43,10 +44,10 @@ export function setup () {
         // so, skip the beginning and pull out the data
         data = data.split(',')[1]
         if (data)
-          return cb(new Buffer(data, 'base64'))
+          return cb({ mimeType: 'image/png', data: new Buffer(data, 'base64') })
       }
-      cb(defaultFaviconBuffer)
-    }).catch(err => cb(defaultFaviconBuffer))
+      cb({ mimeType: 'image/png', data: defaultFaviconBuffer })
+    }).catch(err => cb({ mimeType: 'image/png', data: defaultFaviconBuffer }))
   }, e => {
     if (e)
       console.error('Failed to register beaker-favicon protocol', e)
