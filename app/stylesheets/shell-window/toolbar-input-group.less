@@ -12,7 +12,7 @@
 
   input[type=text] {
     flex: 1;
-    padding: 1px 0 1px 10px;
+    padding: 1px 0 1px 7px;
 
     border: 0;
     background: transparent;
@@ -60,8 +60,8 @@
     &.nav-bookmark-btn {
       color: transparent;
       -webkit-text-stroke: 1px #aaa;
-      font-size: 13px;
-      padding-bottom: 6px;
+      font-size: 14px;
+      padding-bottom: 5px;
       &.active {
         color: #FFBC00;
         -webkit-text-stroke: 1px #EAAE05;
@@ -71,19 +71,72 @@
       }
     }
 
-    &.green {
+    small {
+      position: relative;
+      top: -2px;
+      font-size: 11px;
+    }
+  }
+
+  .toolbar-site-info {
+    button {
+      display: flex;
       color: #555;
-      padding: 4px 3px 4px 9px;
+      padding: 0;
       border: 0;
       min-width: 0;
+
       .icon {
+        padding: 7px 0 4px 9px;
         font-size: 14px;
-      }
-      .icon-lock {
-        color: #129a12;
-      }
-      .icon-share {
         color: #016fde;
+        &.icon-lock {
+          font-size: 15px;
+          position: relative;
+          top: -1px;
+          vertical-align: top;
+        }
+      }
+
+      .title {
+        font-size: 14px;
+        color: #016fde;
+        margin-top: 5px; // use margin so the border on the right will have spacing from the top border
+        padding: 2px 7px 1px 5px;
+        border: 0;
+        border-right: 1px solid #ddd;
+      }
+    }
+  }
+
+  .charms {
+    padding: 0px 5px;
+    button {
+      -webkit-text-stroke: 1px #999;
+      color: #f5f5f5;
+      border: 0;
+      min-width: 22px;
+      padding: 4px;
+      transition: color 0.1s;
+      &:hover {
+        color: #e5e5e5;
+      }
+
+      &.clickable, &.clickable .icon {
+        cursor: pointer;
+      }
+
+      &.nav-live-reload-btn {
+        color: gold;
+        padding-right: 0;
+        min-width: 15px;
+        -webkit-text-stroke: 1px #eabb33;
+        animation-name: navLiveReloadBtnGlow;
+        animation-duration: 2s;
+        animation-iteration-count: infinite;
+        .icon {
+          font-size: 14px;
+        }
       }
     }
   }
@@ -143,4 +196,10 @@
       }
     }
   }
+}
+
+@keyframes navLiveReloadBtnGlow {
+  from { text-shadow: 0 0 0 #eabb33; }
+  50% { text-shadow: 0 0 5px #eabb33; }
+  to { text-shadow: 0 0 0 #eabb33; }
 }

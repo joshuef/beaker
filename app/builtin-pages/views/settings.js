@@ -54,7 +54,7 @@ function render () {
       <div class="ll-heading">
         Auto-updater
         <small class="ll-heading-right">
-          <a href="https://github.com/joshuef/beaker" title="Get Help"><span class="icon icon-lifebuoy"></span> Help</a>
+          <a href="https://beakerbrowser.com/docs/" title="Get Help"><span class="icon icon-lifebuoy"></span> Help</a>
         </small>
       </div>
       ${renderAutoUpdater()}
@@ -85,7 +85,7 @@ function renderProtocolSettings () {
     ${registered.length
       ? yo`<div>Beaker is the default browser for <strong>${registered.join(', ')}</strong>.</div>`
       : '' }
-    ${unregistered.map(proto => yo`<div>Make Beaker the default browser for <strong>${proto}</strong>? <a class="icon icon-check" onclick=${register(proto)}> Yes</a>.</div>`)}
+    ${unregistered.map(proto => yo`<div><strong>${proto}</strong> <a onclick=${register(proto)}>Make default <span class="icon icon-forward"></span></a></div>`)}
   </div>`
 }
 

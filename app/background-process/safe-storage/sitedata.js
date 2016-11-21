@@ -1,8 +1,8 @@
 import { app, ipcMain } from 'electron'
 import url from 'url'
 import rpc from 'pauls-electron-rpc'
-import manifest from '../api-manifests/sitedata'
-import log from '../../log'
+import manifest from '../api-manifests/internal/sitedata'
+import { internalOnly } from '../../lib/bg/rpc'
 
 import store from './store';
 import { createActions } from 'redux-actions';
@@ -28,27 +28,27 @@ const initialState = List([
 
 
 
-export default function sitedata(state = initialState, action) 
+export default function sitedata(state = initialState, action)
 {
     let payload = fromJS(  action.payload );
-    
+
     switch (action.type) {
         case UPDATE_SITE_DATA :
-        {            
+        {
             let index = state.findIndex( site => {
-                
+
                 return site.get('id') === payload.get( 'id' );
-                
+
             });
-            
+
             if( index > -1 )
             {
                 let siteToMerge = state.get( index );
                 let updatedSite = siteToMerge.mergeDeep( payload );
-                
+
                 return state.set( index, updatedSite );
             }
-            
+
             return state.push( payload );
         }
         return
@@ -67,35 +67,35 @@ export default function sitedata(state = initialState, action)
 
 
 
-export function setup () {    
-    // wire up RPC
-    rpc.exportAPI('beakerSitedata', manifest, { get, set })
+export function setup () {
+  // wire up RPC
+  rpc.exportAPI('beakerSitedata', manifest, { get, set, getPermissions, getPermission, setPermission }, internalOnly)
 }
 
 export function set (url, key, value)
 {
-    let origin = extractOrigin(url);    
+    let origin = extractOrigin(url);
     let sitedata = { id: origin, data: {} };
-    
+
     sitedata.data[ key ] = value;
-        
+
     return new Promise( ( resolve, reject) =>
     {
         return store.dispatch( updateSiteData( sitedata ) );
-        
+
     })
-    
-    
+
+
 }
 
 export function get (url, key) {
     var origin = extractOrigin(url);
     let sitedata = { id: origin, key: key };
-    
+
     return new Promise( ( resolve, reject) =>
     {
         let site = store.getState()[ 'sitedata' ].find( site => site.get('id') === origin ) ;
-        
+
         if( site )
         {
             let datum = site.get( 'data' ).get( key );
@@ -104,15 +104,34 @@ export function get (url, key) {
         else {
             resolve( undefined );
         }
-        
-        
+
+
     })
 }
 
-function extractOrigin (originURL) {
-    var urlp = url.parse(originURL)
-    if (!urlp || !urlp.host || !urlp.protocol)
-    return
-    return (urlp.protocol + urlp.host + (urlp.port || ''))
+export function getPermissions (url) {
 }
 
+export function getNetworkPermissions (url) {
+}
+
+export function getPermission (url, key) {
+  return get(url, 'perm:' + key)
+}
+
+export function setPermission (url, key, value) {
+  value = !!value
+  return set(url, 'perm:' + key, value)
+}
+
+export function query (values) {
+}
+
+// internal methods
+// =
+
+function extractOrigin (originURL) {
+  var urlp = url.parse(originURL)
+  if (!urlp || !urlp.host || !urlp.protocol) return
+  return (urlp.protocol + urlp.host)
+}

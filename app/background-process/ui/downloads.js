@@ -6,7 +6,8 @@ import speedometer from 'speedometer'
 import emitStream from 'emit-stream'
 import EventEmitter from 'events'
 import rpc from 'pauls-electron-rpc'
-import manifest from '../api-manifests/downloads'
+import manifest from '../api-manifests/internal/downloads'
+import { internalOnly } from '../../lib/bg/rpc'
 
 // globals
 // =
@@ -23,7 +24,7 @@ var downloadsEvents = new EventEmitter()
 
 export function setup () {
   // wire up RPC
-  rpc.exportAPI('beakerDownloads', manifest, { eventsStream, getDownloads, pause, resume, cancel, remove, open, showInFolder })
+  rpc.exportAPI('beakerDownloads', manifest, { eventsStream, getDownloads, pause, resume, cancel, remove, open, showInFolder }, internalOnly)
 }
 
 export function registerListener (win, opts = {}) {
@@ -218,12 +219,12 @@ function capture (item) {
 
 // sum of received bytes
 function getSumReceivedBytes () {
-  return getActiveDownloads().reduce((acc, item) => acc + item.getReceivedBytes(), 0) 
+  return getActiveDownloads().reduce((acc, item) => acc + item.getReceivedBytes(), 0)
 }
 
 // sum of total bytes
 function getSumTotalBytes () {
-  return getActiveDownloads().reduce((acc, item) => acc + item.getTotalBytes(), 0) 
+  return getActiveDownloads().reduce((acc, item) => acc + item.getTotalBytes(), 0)
 }
 
 function getActiveDownloads () {

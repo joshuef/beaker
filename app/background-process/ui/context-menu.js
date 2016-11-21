@@ -91,7 +91,7 @@ export default function registerContextMenu () {
       }
       else if (hasText) {
         menuItems.push({ label: 'Copy', role: 'copy', enabled: can('Copy') })
-        menuItems.push({ type: 'separator' })      
+        menuItems.push({ type: 'separator' })
       }
 
       // inspector

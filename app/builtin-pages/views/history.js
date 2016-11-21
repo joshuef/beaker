@@ -5,6 +5,7 @@ This uses the beakerHistory API, which is exposed by webview-preload to all site
 import * as yo from 'yo-yo'
 import * as moment from 'moment'
 import { niceDate } from '../../lib/time'
+import { ucfirst } from '../../lib/strings'
 
 // globals
 // =
@@ -44,7 +45,6 @@ function fetchMore (cb) {
 
   isFetching = true
   beakerHistory.getVisitHistory({ offset: visits.length, limit: 100 }).then(rows => {
-      
     if (rows.length == 0)
       isAtEnd = true
     else
@@ -66,7 +66,7 @@ function render () {
     var oldLastDate = lastDate
     lastDate = moment(row.ts).endOf('day')
     if (!lastDate.isSame(oldLastDate, 'day')) {
-      rowEls.push(yo`<div class="ll-heading">${niceDate(lastDate, { noTime: true })}</div>`)
+      rowEls.push(yo`<div class="ll-heading">${ucfirst(niceDate(lastDate, { noTime: true }))}</div>`)
     }
 
     // render row
@@ -89,6 +89,18 @@ function render () {
   }
 
   yo.update(document.querySelector('#el-content'), yo`<div class="pane" id="el-content" onscroll=${onScrollContent}>
+    <div class="page-toolbar">
+     <button class="btn" onclick=${onClickDeleteBulk.bind(window)}>
+       Clear Browsing History
+     </button>
+     <select id="delete-period">
+       <option value="day">from today</option>
+       <option value="week">from this week</option>
+       <option value="month">from this month</option>
+       <option value="all">from all time</option>
+     </select>
+    </div>
+
     <div class="history links-list">
       ${rowEls}
     </div>
@@ -115,4 +127,24 @@ function onClickDelete (i) {
   visits.splice(i, 1)
   beakerHistory.removeVisit(v.url)
   render()
+}
+
+function onClickDeleteBulk () {
+  var period = document.querySelector('#delete-period').value
+
+  // clear all history
+  if (period === 'all') {
+    visits = []
+    beakerHistory.removeAllVisits()
+    render()
+  } else {
+    var threshold = moment().startOf(period).valueOf()
+
+    // filter out visits that with a timestamp >= threshold
+    visits = visits.filter(v => v.ts < threshold)
+    beakerHistory.removeVisitsAfter(threshold)
+
+    // fetch and render more visits if possible
+    fetchMore(render)
+  }
 }

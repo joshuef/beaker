@@ -4,8 +4,8 @@ import * as zoom from '../pages/zoom'
 import * as yo from 'yo-yo'
 import emitStream from 'emit-stream'
 import { UpdatesNavbarBtn } from './navbar/updates'
-import { DownloadsNavbarBtn } from './navbar/downloads'
-import { SitePermsNavbarBtn } from './navbar/site-perms'
+import { DropMenuNavbarBtn } from './navbar/drop-menu'
+import { SiteInfoNavbarBtn } from './navbar/site-info'
 
 const KEYCODE_DOWN = 40
 const KEYCODE_UP = 38
@@ -14,13 +14,15 @@ const KEYCODE_ENTER = 13
 const KEYCODE_N = 78
 const KEYCODE_P = 80
 
+const isHashRegex = /^[a-z0-9]{64}/i
+
 // globals
 // =
 
 var toolbarNavDiv = document.getElementById('toolbar-nav')
 var updatesNavbarBtn = null
-var downloadsNavbarBtn = null
-var sitePermsNavbarBtn = null
+var dropMenuNavbarBtn = null
+var siteInfoNavbarBtn = null
 
 // autocomplete data
 var autocompleteCurrentValue = null
@@ -33,8 +35,8 @@ var autocompleteResults = null // if set to an array, will render dropdown
 export function setup () {
   // create the button managers
   updatesNavbarBtn = new UpdatesNavbarBtn()
-  downloadsNavbarBtn = new DownloadsNavbarBtn()
-  sitePermsNavbarBtn = new SitePermsNavbarBtn()
+  dropMenuNavbarBtn = new DropMenuNavbarBtn()
+  siteInfoNavbarBtn = new SiteInfoNavbarBtn()
 }
 
 export function createEl (id) {
@@ -107,12 +109,13 @@ export function updateLocation (page) {
 // =
 
 function render (id, page) {
-  var isLoading = page && page.isLoading()
-  
+  const isLoading = page && page.isLoading()
+  const isViewingDat = page && page.getURL().startsWith('dat:')
+
   var webContents = remote.getCurrentWindow().webContents;
-  
+
   var isSafe = webContents.isSafe;
-  
+
   if( typeof isSafe === 'undefined' )
   {
       isSafe = true;
@@ -130,8 +133,7 @@ function render (id, page) {
     : yo`<button class="toolbar-btn nav-reload-btn" onclick=${onClickReload}>
         <span class="icon icon-ccw"></span>
       </button>`
-      
-      
+
   // render safe btn
   var safeBtn = (isSafe)
     ? yo`<button class="toolbar-btn safe-btn-safe" onclick=${onClickToggleSafe}>
@@ -161,15 +163,14 @@ function render (id, page) {
             value=${findValue} />`
     : ''
 
-
   // bookmark toggle state
-  var bookmarkClass = 'nav-bookmark-btn'+((page && !!page.bookmark) ? ' active' : '')
+  var bookmarkClass = 'nav-bookmark-btn' + ((page && !!page.bookmark) ? ' active' : '')
 
-  // view dat
+  // view dat btn
   var viewDatBtn
-  if (page && page.protocolDescription && page.protocolDescription.scheme == 'dat') {
-    viewDatBtn = yo`<button class="nav-view-files-btn" onclick=${onClickViewFiles}>
-      <span class="icon icon-docs"></span> <small>View Site Files</small>
+  if (isViewingDat) {
+    viewDatBtn = yo`<button class="nav-view-files-btn clickable" title="View App Files" onclick=${onClickViewFiles}>
+      <span class="icon icon-folder"></span>
     </button>`
   }
 
@@ -208,7 +209,7 @@ function render (id, page) {
             titleColumn.innerHTML = r.titleDecorated // use innerHTML so our decoration can show
           else
             titleColumn.textContent = r.title
-          
+
           // selection
           var rowCls = 'result'
           if (i == autocompleteCurrentSelection)
@@ -230,7 +231,22 @@ function render (id, page) {
   var addrValue = addrEl ? addrEl.value : ''
 
   // setup site-perms dropdown
-  sitePermsNavbarBtn.protocolDescription = (page && page.protocolDescription)
+  siteInfoNavbarBtn.protocolInfo = (page && page.protocolInfo)
+  siteInfoNavbarBtn.siteInfo = (page && page.siteInfo)
+  siteInfoNavbarBtn.sitePerms = (page && page.sitePerms)
+  siteInfoNavbarBtn.siteInfoOverride = (page && page.siteInfoOverride)
+
+  // the main URL input
+  var locationInput = yo`
+    <input
+      type="text"
+      class="nav-location-input"
+      onfocus=${onFocusLocation}
+      onblur=${onBlurLocation}
+      onkeydown=${onKeydownLocation}
+      oninput=${onInputLocation}
+      value=${addrValue} />
+  `
 
   // render
   return yo`<div data-id=${id} class="toolbar-actions${toolbarHidden}">
@@ -241,33 +257,27 @@ function render (id, page) {
       <button class="toolbar-btn nav-forward-btn" ${forwardDisabled} onclick=${onClickForward}>
         <span class="icon icon-right-open-big"></span>
       </button>
-      ${reloadBtn}      
-      ${safeBtn}      
+      ${reloadBtn}
+      ${safeBtn}
     </div>
     <div class="toolbar-input-group">
-      ${sitePermsNavbarBtn.render()}
-      <input
-        type="text"
-        class="nav-location-input"
-        onfocus=${onFocusLocation}
-        onblur=${onBlurLocation}
-        onkeydown=${onKeydownLocation}
-        oninput=${onInputLocation}
-        value=${addrValue} />
+      ${siteInfoNavbarBtn.render()}
+      ${locationInput}
+      <span class="charms">
+        ${viewDatBtn}
+      </span>
       ${inpageFinder}
-      ${viewDatBtn}
       ${zoomBtn}
       <button class=${bookmarkClass} onclick=${onClickBookmark}><span class="icon icon-star"></span></button>
       ${autocompleteDropdown}
     </div>
     <div class="toolbar-group">
-      ${downloadsNavbarBtn.render()}
+      ${dropMenuNavbarBtn.render()}
       ${updatesNavbarBtn.render()}
     </div>
   </div>`
 }
 
-var isHashRegex = /^[a-z0-9]{64}/i
 function handleAutocompleteSearch (results) {
   var v = autocompleteCurrentValue
 
@@ -291,13 +301,13 @@ function handleAutocompleteSearch (results) {
 
   // set the top results accordingly
   var gotoResult = { url: vWithProtocol, title: 'Go to '+v, isGuessingTheScheme }
-  var searchResult = { 
+  var searchResult = {
     search: v,
     title: 'DuckDuckGo Search',
     url: 'https://duckduckgo.com/?q=' + v.split(' ').join('+')
   }
   if (isProbablyUrl) autocompleteResults = [gotoResult, searchResult]
-  else               autocompleteResults = [searchResult]
+  else               autocompleteResults = [searchResult, gotoResult]
 
   // add search results
   if (results)
@@ -308,14 +318,20 @@ function handleAutocompleteSearch (results) {
 }
 
 function getAutocompleteSelection (i) {
-  if (typeof i !== 'number')
+  if (typeof i !== 'number') {
     i = autocompleteCurrentSelection
-  if (autocompleteResults && autocompleteResults[i])
+  }
+  if (autocompleteResults && autocompleteResults[i]) {
     return autocompleteResults[i]
+  }
 
   // fallback to the current value in the navbar
   var addrEl = pages.getActive().navbarEl.querySelector('.nav-location-input')
-  return { url: addrEl.value }
+  var url = addrEl.value
+  if (isHashRegex.test(url)) {
+    url = 'dat://' + url // we can consistently guess this, so do so
+  }
+  return { url }
 }
 
 function getAutocompleteSelectionUrl (i) {
@@ -343,13 +359,13 @@ function decorateResultMatches (searchTerms, result) {
 
     // sometimes multiple terms can hit at the same point
     // that breaks the algorithm, so skip that condition
-    if (lastTuple && lastTuple[0] === columnIndex && lastTuple[2] === offset)
-      continue
+    if (lastTuple && lastTuple[0] === columnIndex && lastTuple[2] === offset) continue
     lastTuple = tuple
 
     // use the length of the search term
     // (sqlite FTS gives the length of the full matching token, which isnt as helpful)
     let searchTerm = searchTerms[termIndex]
+    if (!searchTerm) continue
     let len = searchTerm.length
 
     // extract segments
@@ -421,7 +437,7 @@ function onClickReload (e) {
 
 export function onClickToggleSafe ( e )
 {
-    pages.toggleSafe();    
+    pages.toggleSafe();
 }
 
 function onClickCancel (e) {
@@ -432,22 +448,43 @@ function onClickCancel (e) {
 
 function onClickBookmark (e) {
   var page = getEventPage(e)
-  if (page)
+  if (page) {
     page.toggleBookmark()
+
+    // animate the element
+    document.querySelector('.toolbar-actions:not(.hidden) .nav-bookmark-btn .icon').animate([
+      {textShadow: '0 0 0px rgba(255, 188, 0, 1.0)'},
+      {textShadow: '0 0 8px rgba(255, 188, 0, 1.0)'},
+      {textShadow: '0 0 16px rgba(255, 188, 0, 0.0)'}
+    ], { duration: 300 })
+  }
 }
 
 function onClickViewFiles (e) {
   var page = getEventPage(e)
-  if (page) {
-    if (e.metaKey || e.ctrlKey) // popup
-      pages.setActive(pages.create('view-'+page.getURL()))
-    else
-      page.loadURL('view-'+page.getURL()) // goto
+  if (page && page.getURL().startsWith('dat://')) {
+    // get the target url
+    var url = page.getViewFilesURL()
+    if (!url) return
+
+    // start loading
+    if (e.metaKey || e.ctrlKey) { // popup
+      pages.setActive(pages.create(url))
+    } else {
+      page.loadURL(url) // goto
+    }
+
+    // animate the element
+    document.querySelector('.toolbar-actions:not(.hidden) .nav-view-files-btn .icon').animate([
+      {textShadow: '0 0 0px rgba(128, 128, 128, 1.0)'},
+      {textShadow: '0 0 8px rgba(128, 128, 128, 1.0)'},
+      {textShadow: '0 0 16px rgba(128, 128, 128, 0.0)'}
+    ], { duration: 300 })
   }
 }
 
 function onClickZoom (e) {
-  const { Menu, MenuItem } = remote
+  const { Menu } = remote
   var menu = Menu.buildFromTemplate([
     { label: 'Reset Zoom', click: () => zoom.zoomReset(pages.getActive()) },
     { label: 'Zoom In', click: () => zoom.zoomIn(pages.getActive()) },
@@ -501,7 +538,7 @@ function onKeydownLocation (e) {
   // on escape
   if (e.keyCode == KEYCODE_ESC) {
     var page = getEventPage(e)
-    page.navbarEl.querySelector('.nav-location-input').value = page.getURL()
+    page.navbarEl.querySelector('.nav-location-input').value = page.getIntendedURL()
     e.target.blur()
     return
   }
