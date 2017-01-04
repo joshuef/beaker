@@ -68,6 +68,7 @@ export function registerStandardSchemes () {
   // get the protocols that are 'standard'
   var standardSchemes = protos.filter(desc => desc.isStandardURL).map(desc => desc.scheme)
 
+console.log( "starting standard schemes", standardSchemes );
   // register
   protocol.registerStandardSchemes(standardSchemes)
 }

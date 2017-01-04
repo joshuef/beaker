@@ -34,8 +34,6 @@ import { auth } from 'safe-js'
 // import packageJson from './package.json'
 var packageJson = require( './package.json' );
 
-console.log( "packagejson" );
-
 const safeBrowserApp =
 {
     name: packageJson.name,
